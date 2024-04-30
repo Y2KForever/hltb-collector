@@ -1,0 +1,24 @@
+{
+  "name": "imdb-watchlist",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "tsc": "tsc",
+    "start": "npm run tsc && node dist/index.js",
+    "upload-watchlist": "start %cd%/scripts/upload_to_dynamodb.bat"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "puppeteer": "^22.6.5",
+    "puppeteer-autoscroll-down": "^2.0.0",
+    "typescript": "^5.4.5"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.4",
+    "@types/puppeteer": "^7.0.4"
+  }
+}
