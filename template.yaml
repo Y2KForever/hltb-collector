@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ChromiumLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: Chromium with Node.js integration for AWS Lambda
+      ContentUri: layers/chromium
+      CompatibleRuntimes:
+        - &nodejsRuntime nodejs18.x
+      CompatibleArchitectures:
+        - &chromiumArch x86_64
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: *nodejsRuntime
+      BuildArchitecture: *chromiumArch
+  PuppeteerLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      Description: Puppeteer with Node.js integration for AWS Lambda
+      ContentUri: layers/puppeteer
+      CompatibleRuntimes:
+        - nodejs18.x
+      CompatibleArchitectures:
+        - x86_64
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: *nodejsRuntime
+      BuildArchitecture: *chromiumArch
+
+  HLTBGathererLambda:
+    Type: AWS::Serverless::Function
+    Properties:
+      Environment:
+        Variables:
+          tableName: hltb-games
+      CodeUri: ./dist/
+      Handler: index.handler
+      Architectures:
+        - x86_64
+      Runtime: nodejs18.x
+      Timeout: 900
+      MemorySize: 1024
+      Layers:
+        - !Ref ChromiumLayer
+        - !Ref PuppeteerLayer
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: hltb-games
+      Events:
+        BacklogPlayingReplays:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(0 0 ? * * *)
+            Input: '{"params": ["backlog", "playing", "replays"]}'
+        Completed:
+          Type: ScheduleV2
+          Properties:
+            ScheduleExpression: cron(0 0 ? * SUN *)
+            Input: '{"params": ["completed"]}'

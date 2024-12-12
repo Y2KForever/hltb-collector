@@ -1,0 +1,9 @@
+{
+  "name": "PuppeteerLayer",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Puppeteer layer for AWS Lambda",
+  "dependencies": {
+    "puppeteer-core": "21.5.2"
+  }
+}

@@ -1,3 +1,3 @@
 export const ENV_VARS = {
-  watchlist_link: 'watchlist_link',
+  hltb_link: 'hltb_link',
 };

@@ -1,1 +1,1 @@
-# IMDB Watchlist Collector
+# HowLongToBeat Collector
