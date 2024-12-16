@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer-core';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import chromium from '@sparticuz/chromium';
-import { checkIfExistInDdb, createChunks, inputToDb, isSameItem, remapGames } from './utils';
+import { checkIfExistInDdb, createChunks, inputToDb, remapGames } from './utils';
 import { Game, GamesResponse } from './types';
 import { Handler } from 'aws-lambda';
 const client = new DynamoDBClient({});
@@ -72,18 +72,11 @@ export const handler: Handler = async () => {
 
     const existingGames = games.map(remapGames);
 
-    const { existingItems = [], nonExistingItems = [] } = await checkIfExistInDdb(existingGames, client);
+    const { changedItems = [] } = await checkIfExistInDdb(existingGames, client);
 
-    const updatedItems = existingGames.filter((game) => {
-      const matchingItem = existingItems.find((dbItem) => dbItem.name.S === game.name.S);
-      return matchingItem && !isSameItem(game, matchingItem);
-    });
+    console.log('changedItems', changedItems);
 
-    console.log('existingItems', existingItems);
-    console.log('nonExistingItems', nonExistingItems);
-    console.log('updatedTimes', updatedItems);
-
-    for (const batch of createChunks([...nonExistingItems, ...updatedItems], 25)) {
+    for (const batch of createChunks([...changedItems], 25)) {
       await inputToDb(batch, client);
     }
     console.log('\x1b[32m%s\x1b[0m', `Finished uploading!`);

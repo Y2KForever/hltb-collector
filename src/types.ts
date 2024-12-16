@@ -1,3 +1,5 @@
+import { AttributeValue } from '@aws-sdk/client-dynamodb';
+
 type GamesResponse = {
   data: {
     count: number;
@@ -101,8 +103,14 @@ interface DdbGames {
     N: string;
   };
   img: {
-    S: string;
+    S: string | undefined;
   };
+  completed: {
+    S: string | undefined;
+  };
+  started: {
+    S: string | undefined;
+  }
 }
 
 interface PossiblyEmptyGames {
@@ -114,17 +122,7 @@ interface PossiblyEmptyGames {
 }
 
 interface CheckItemsResult {
-  existingItems: DdbGames[];
-  nonExistingItems: NonExistingGame[];
+  changedItems: DdbGames[];
 }
 
-interface NonExistingGame {
-  name: string;
-  url: string;
-  platform: string;
-  status: string;
-  completed: string;
-  time: string | number;
-}
-
-export { CheckItemsResult, PossiblyEmptyGames, NonExistingGame, GamesResponse, Game };
+export { CheckItemsResult, PossiblyEmptyGames, GamesResponse, Game, DdbGames };

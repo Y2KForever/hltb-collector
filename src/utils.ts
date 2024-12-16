@@ -1,5 +1,5 @@
 import { AttributeValue, BatchGetItemCommand, BatchWriteItemCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { CheckItemsResult, Game } from './types';
+import { CheckItemsResult, DdbGames, Game } from './types';
 
 export async function autoScroll(page: any) {
   await page.evaluate(async () => {
@@ -25,7 +25,7 @@ export const inputToDb = async (games: any[], client: DynamoDBClient) => {
     throw new Error(`Table name not defined`);
   }
 
-  const gameList: any[] = games.map((game, idx) => {
+  const gameList = games.map((game) => {
     return {
       PutRequest: {
         Item: {
@@ -35,6 +35,7 @@ export const inputToDb = async (games: any[], client: DynamoDBClient) => {
           time: { N: game.time.N.toString() },
           img: { S: game.img.S },
           completed: { S: game.completed.S ? game.completed.S : '' },
+          started: { S: game.started.S ? game.started.S : '' },
           lastModifiedAt: { S: new Date().toISOString().split('T')[0] },
         },
       },
@@ -88,17 +89,7 @@ export const transformAttributeValue = (value: any): AttributeValue => {
   }
 };
 
-export const isSameItem = (item1: any, item2: any): boolean => {
-  return (
-    item1.name.S === item2.name.S &&
-    item1.platform.S === item2.platform.S &&
-    parseInt(item1.time.N) === parseInt(item2.time.N) &&
-    item1.status.S === item2.status.S &&
-    Boolean(item1.completed.S) === Boolean(item2.completed.S)
-  );
-};
-
-export const checkIfExistInDdb = async (games: any[], client: DynamoDBClient): Promise<CheckItemsResult> => {
+export const checkIfExistInDdb = async (games: DdbGames[], client: DynamoDBClient): Promise<CheckItemsResult> => {
   const tableName = 'hltb-games';
   if (!tableName) {
     throw new Error(`Table name not defined`);
@@ -132,27 +123,32 @@ export const checkIfExistInDdb = async (games: any[], client: DynamoDBClient): P
     }
   };
 
-  const results: any[] = [];
+  const results: Record<string, AttributeValue>[] = [];
   for (const chunk of chunks) {
     const chunkResult = await processBatch(chunk);
     results.push(...chunkResult);
   }
 
   // Compare games with DynamoDB results
-  const existingItems: any[] = [];
-  const nonExistingItems: any[] = [];
+  const changedItems: any[] = [];
 
   games.forEach((game) => {
-    const matchingItem = results.find((ddbItem) => ddbItem.name.S === game.name.S);
+    const matchingItem = results.find(
+      (ddbItem) =>
+        ddbItem.name.S === game.name.S &&
+        ddbItem.platform.S === game.platform.S &&
+        parseInt(ddbItem.time.N!) === parseInt(game.time.N) &&
+        ddbItem.status.S === game.status.S &&
+        Boolean(ddbItem.completed?.S) === Boolean(game.completed?.S) &&
+        Boolean(ddbItem.started?.S) === Boolean(game.started?.S),
+    );
 
-    if (matchingItem) {
-      existingItems.push(matchingItem);
-    } else {
-      nonExistingItems.push(game);
+    if (!matchingItem) {
+      changedItems.push(game);
     }
   });
 
-  return { existingItems, nonExistingItems };
+  return { changedItems };
 };
 
 export const delay = (ms: number): Promise<void> => {
@@ -160,17 +156,15 @@ export const delay = (ms: number): Promise<void> => {
 };
 
 export const remapGames = (game: Game) => {
+  const statusMap: { key: keyof typeof game; label: string }[] = [
+    { key: 'list_playing', label: 'PLAYING' },
+    { key: 'list_backlog', label: 'BACKLOG' },
+    { key: 'list_comp', label: 'COMPLETED' },
+    { key: 'list_retired', label: 'RETIRED' },
+  ];
   const time = (game.invested_pro + game.invested_sp + game.invested_spd + game.invested_co + game.invested_mp) * 1000;
 
-  const status = game.list_playing
-    ? 'PLAYING'
-    : game.list_backlog
-    ? 'BACKLOG'
-    : game.list_comp
-    ? 'COMPLETED'
-    : game.list_retired
-    ? 'RETIRED'
-    : null;
+  const status = statusMap.find(({ key }) => game[key] === 1)?.label || 'CUSTOM';
 
   return {
     name: { S: game.custom_title },
@@ -178,6 +172,7 @@ export const remapGames = (game: Game) => {
     time: { N: time.toString() },
     status: { S: status },
     completed: { S: game.date_complete > '0000-00-00' ? game.date_complete : undefined },
+    started: { S: game.date_start > '0000-00-00' ? game.date_start : undefined },
     img: { S: game.game_image ? `https://howlongtobeat.com/games/${game.game_image}` : undefined },
   };
 };
