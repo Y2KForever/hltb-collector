@@ -1,6 +1,6 @@
 {
   "name": "hltb-gatherer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -16,15 +16,15 @@
     "@aws-sdk/client-dynamodb": "^3.588.0",
     "@aws-sdk/client-lambda": "^3.592.0",
     "@aws-sdk/client-s3": "^3.685.0",
-    "@sparticuz/chromium": "^118.0.0",
-    "puppeteer-core": "^22.6.5"
+    "@sparticuz/chromium": "123.0.1",
+    "puppeteer-core": "22.6.4"
   },
   "devDependencies": {
     "@tsconfig/node20": "^20.1.4",
     "@types/aws-lambda": "^8.10.138",
     "@types/puppeteer": "^7.0.4",
     "axios": "^1.7.2",
-    "puppeteer": "^22.6.5",
+    "puppeteer": "22.6.4",
     "typescript": "^5.4.5"
   }
 }

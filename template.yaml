@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 
 Resources:
-  ChromiumLayer:
+  chromium:
     Type: AWS::Serverless::LayerVersion
     Properties:
       Description: Chromium with Node.js integration for AWS Lambda
@@ -15,7 +15,7 @@ Resources:
     Metadata:
       BuildMethod: *nodejsRuntime
       BuildArchitecture: *chromiumArch
-  PuppeteerLayer:
+  puppeteer:
     Type: AWS::Serverless::LayerVersion
     Properties:
       Description: Puppeteer with Node.js integration for AWS Lambda
@@ -35,16 +35,17 @@ Resources:
       Environment:
         Variables:
           tableName: hltb-games
+          hltbLink: https://howlongtobeat.com/user/Y2KForever/games/playing-backlog-completed/1
       CodeUri: ./dist/
       Handler: index.handler
       Architectures:
         - x86_64
       Runtime: nodejs18.x
       Timeout: 900
-      MemorySize: 1024
+      MemorySize: 3072
       Layers:
-        - !Ref ChromiumLayer
-        - !Ref PuppeteerLayer
+        - !Ref chromium
+        - !Ref puppeteer
       Policies:
         - DynamoDBCrudPolicy:
             TableName: hltb-games
@@ -53,9 +54,3 @@ Resources:
           Type: ScheduleV2
           Properties:
             ScheduleExpression: cron(0 0 ? * * *)
-            Input: '{"params": ["backlog", "playing", "replays"]}'
-        Completed:
-          Type: ScheduleV2
-          Properties:
-            ScheduleExpression: cron(0 0 ? * SUN *)
-            Input: '{"params": ["completed"]}'

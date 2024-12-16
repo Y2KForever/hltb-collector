@@ -1,5 +1,5 @@
 {
-  "name": "ChromiumLayer",
+  "name": "chromium",
   "private": true,
   "version": "1.0.0",
   "description": "Chromium layer for AWS Lambda",

@@ -1,5 +1,5 @@
 import { AttributeValue, BatchGetItemCommand, BatchWriteItemCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { CheckItemsResult } from './types';
+import { CheckItemsResult, Game } from './types';
 
 export async function autoScroll(page: any) {
   await page.evaluate(async () => {
@@ -29,12 +29,12 @@ export const inputToDb = async (games: any[], client: DynamoDBClient) => {
     return {
       PutRequest: {
         Item: {
-          name: { S: game.name },
-          platform: { S: game.platform },
-          status: { S: game.status },
-          time: { N: game.time.toString() },
-          img: { S: game.img },
-          completed: { S: game.completed ? game.completed : '' },
+          name: { S: game.name.S },
+          platform: { S: game.platform.S },
+          status: { S: game.status.S },
+          time: { N: game.time.N.toString() },
+          img: { S: game.img.S },
+          completed: { S: game.completed.S ? game.completed.S : '' },
           lastModifiedAt: { S: new Date().toISOString().split('T')[0] },
         },
       },
@@ -64,7 +64,7 @@ export const createChunks = <T>(array: T[], size: number): T[][] => {
 };
 
 export const convertToMilliseconds = (timeString: string): number | string => {
-  if(!timeString){
+  if (!timeString) {
     return timeString;
   }
   const regex = /(?:(\d+)[hH])?\s*(?:(\d+)[mM])?/;
@@ -90,11 +90,11 @@ export const transformAttributeValue = (value: any): AttributeValue => {
 
 export const isSameItem = (item1: any, item2: any): boolean => {
   return (
-    item1.name === item2.name &&
-    item1.platform === item2.platform &&
-    parseInt(item1.time) === parseInt(item2.time) &&
-    item1.status === item2.status &&
-    item1.completed === item2?.completed
+    item1.name.S === item2.name.S &&
+    item1.platform.S === item2.platform.S &&
+    parseInt(item1.time.N) === parseInt(item2.time.N) &&
+    item1.status.S === item2.status.S &&
+    Boolean(item1.completed.S) === Boolean(item2.completed.S)
   );
 };
 
@@ -104,9 +104,8 @@ export const checkIfExistInDdb = async (games: any[], client: DynamoDBClient): P
     throw new Error(`Table name not defined`);
   }
 
-  // Extract unique names to check
   const keysToCheck = games.map((game) => ({
-    name: { S: game.name }, // DynamoDB expects attribute format
+    name: { S: game.name.S },
   }));
 
   // Split into chunks of 100 (BatchGetItem limit)
@@ -144,20 +143,10 @@ export const checkIfExistInDdb = async (games: any[], client: DynamoDBClient): P
   const nonExistingItems: any[] = [];
 
   games.forEach((game) => {
-    if (game.name === 'Call of Duty: World at War'){
-      console.log('game', game);
-      console.log('res', results);
-    }
-      const matchingItem = results.find(
-        (ddbItem) =>
-          ddbItem.name.S === game.name &&
-          ddbItem.time?.N === convertToMilliseconds(game.time).toString() &&
-          Boolean(ddbItem.completed?.S) === Boolean(game.completed) &&
-          ddbItem.status?.S === game.status,
-      );
+    const matchingItem = results.find((ddbItem) => ddbItem.name.S === game.name.S);
 
     if (matchingItem) {
-      existingItems.push(game);
+      existingItems.push(matchingItem);
     } else {
       nonExistingItems.push(game);
     }
@@ -168,4 +157,27 @@ export const checkIfExistInDdb = async (games: any[], client: DynamoDBClient): P
 
 export const delay = (ms: number): Promise<void> => {
   return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
+export const remapGames = (game: Game) => {
+  const time = (game.invested_pro + game.invested_sp + game.invested_spd + game.invested_co + game.invested_mp) * 1000;
+
+  const status = game.list_playing
+    ? 'PLAYING'
+    : game.list_backlog
+    ? 'BACKLOG'
+    : game.list_comp
+    ? 'COMPLETED'
+    : game.list_retired
+    ? 'RETIRED'
+    : null;
+
+  return {
+    name: { S: game.custom_title },
+    platform: { S: game.platform },
+    time: { N: time.toString() },
+    status: { S: status },
+    completed: { S: game.date_complete > '0000-00-00' ? game.date_complete : undefined },
+    img: { S: game.game_image ? `https://howlongtobeat.com/games/${game.game_image}` : undefined },
+  };
 };
